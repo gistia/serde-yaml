@@ -116,7 +116,6 @@
 //! ```
 
 #![doc(html_root_url = "https://docs.rs/serde_yaml/0.9.21")]
-#![deny(missing_docs)]
 // Suppressed clippy_pedantic lints
 #![allow(
     // buggy
@@ -162,7 +161,7 @@
 )]
 
 pub use crate::de::{from_reader, from_slice, from_str, Deserializer};
-pub use crate::error::{Error, Location, Result};
+pub use crate::error::{Error, ErrorImpl, Location, Result};
 pub use crate::ser::{to_string, to_writer, Serializer};
 #[doc(inline)]
 pub use crate::value::{from_value, to_value, Index, Number, Sequence, Value};

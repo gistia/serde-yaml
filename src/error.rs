@@ -9,13 +9,13 @@ use std::string;
 use std::sync::Arc;
 
 /// An error that happened serializing or deserializing YAML data.
-pub struct Error(Box<ErrorImpl>);
+pub struct Error(pub Box<ErrorImpl>);
 
 /// Alias for a `Result` with the error type `serde_yaml::Error`.
 pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug)]
-pub(crate) enum ErrorImpl {
+pub enum ErrorImpl {
     Message(String, Option<Pos>),
 
     Libyaml(libyaml::Error),
@@ -38,8 +38,28 @@ pub(crate) enum ErrorImpl {
     Shared(Arc<ErrorImpl>),
 }
 
+impl ErrorImpl {
+    pub fn context_location(&self) -> Option<Location> {
+        if let ErrorImpl::Shared(err) = self {
+            return err.context_location();
+        }
+
+        match self {
+            ErrorImpl::Message(_, pos) => pos
+                .as_ref()
+                .map(|pos| Location::from_mark(pos.mark.clone())),
+            ErrorImpl::Libyaml(err) => {
+                return Some(Location::from_mark(err.context_mark.clone()));
+            }
+            ErrorImpl::RecursionLimitExceeded(mark) => Some(Location::from_mark(mark.clone())),
+            ErrorImpl::UnknownAnchor(mark) => Some(Location::from_mark(mark.clone())),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
-pub(crate) struct Pos {
+pub struct Pos {
     mark: libyaml::Mark,
     path: String,
 }
@@ -101,17 +121,21 @@ impl Error {
     pub fn location(&self) -> Option<Location> {
         self.0.location()
     }
+
+    pub fn context_location(&self) -> Option<Location> {
+        self.0.context_location()
+    }
 }
 
-pub(crate) fn new(inner: ErrorImpl) -> Error {
+pub fn new(inner: ErrorImpl) -> Error {
     Error(Box::new(inner))
 }
 
-pub(crate) fn shared(shared: Arc<ErrorImpl>) -> Error {
+pub fn shared(shared: Arc<ErrorImpl>) -> Error {
     Error(Box::new(ErrorImpl::Shared(shared)))
 }
 
-pub(crate) fn fix_mark(mut error: Error, mark: libyaml::Mark, path: Path) -> Error {
+pub fn fix_mark(mut error: Error, mark: libyaml::Mark, path: Path) -> Error {
     if let ErrorImpl::Message(_, none @ None) = error.0.as_mut() {
         *none = Some(Pos {
             mark,
@@ -122,7 +146,7 @@ pub(crate) fn fix_mark(mut error: Error, mark: libyaml::Mark, path: Path) -> Err
 }
 
 impl Error {
-    pub(crate) fn shared(self) -> Arc<ErrorImpl> {
+    pub fn shared(self) -> Arc<ErrorImpl> {
         if let ErrorImpl::Shared(err) = *self.0 {
             err
         } else {

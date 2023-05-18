@@ -4,15 +4,15 @@ use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 use unsafe_libyaml as sys;
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) struct Error {
-    kind: sys::yaml_error_type_t,
+pub struct Error {
+    pub kind: sys::yaml_error_type_t,
     problem: CStr<'static>,
-    problem_offset: u64,
-    problem_mark: Mark,
+    pub problem_offset: u64,
+    pub problem_mark: Mark,
     context: Option<CStr<'static>>,
-    context_mark: Mark,
+    pub context_mark: Mark,
 }
 
 impl Error {
@@ -115,7 +115,7 @@ impl Debug for Error {
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct Mark {
+pub struct Mark {
     pub(super) sys: sys::yaml_mark_t,
 }
 
